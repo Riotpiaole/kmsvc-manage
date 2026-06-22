@@ -1,15 +1,99 @@
 environments:
+  default:
+    values:
+      - environments/homelab.yaml
   homelab:
     values:
       - environments/homelab.yaml
-
+---
 helmDefaults:
   wait: true
   timeout: 600
 
-helmfiles:
-  - path: releases.d/00-strimzi-operator.yaml.gotmpl
-  - path: releases.d/01-kafka-cluster.yaml.gotmpl
-  - path: releases.d/02-redis.yaml.gotmpl
-  - path: releases.d/03-queue-crd.yaml.gotmpl
-  - path: releases.d/04-management-service.yaml.gotmpl
+repositories:
+  - name: strimzi
+    url: https://strimzi.io/charts/
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+
+releases:
+  - name: strimzi-operator
+    namespace: {{ .Values.namespace }}
+    chart: strimzi/strimzi-kafka-operator
+    version: 0.46.0
+    values:
+      - watchNamespaces: ["{{ .Values.namespace }}"]
+
+  - name: kafka-cluster
+    namespace: {{ .Values.namespace }}
+    chart: charts/kafka-cluster
+    needs:
+      - {{ .Values.namespace }}/strimzi-operator
+    values:
+      - namespace: {{ .Values.namespace }}
+        nodePool:
+          replicas: {{ .Values.kafkaCluster.nodePool.replicas }}
+          storage:
+            class: {{ .Values.kafkaCluster.nodePool.storage.class }}
+            sizeGi: {{ .Values.kafkaCluster.nodePool.storage.sizeGi }}
+          resources:
+            memory: {{ .Values.kafkaCluster.nodePool.resources.memory }}
+            cpu: {{ .Values.kafkaCluster.nodePool.resources.cpu | quote }}
+
+  - name: kmsvc-redis
+    namespace: {{ .Values.namespace }}
+    chart: bitnami/redis
+    version: 20.6.0
+    values:
+      - architecture: standalone
+        # Bitnami stopped publishing version-pinned tags under docker.io/bitnami
+        # (only `latest` remains there); bitnamilegacy/* mirrors the old
+        # versioned tags for free, so pin there instead of floating on `latest`.
+        # The chart's container-image allowlist check doesn't know about the
+        # legacy mirror, hence allowInsecureImages.
+        global:
+          security:
+            allowInsecureImages: true
+        image:
+          repository: bitnamilegacy/redis
+        auth:
+          enabled: false
+        master:
+          persistence:
+            enabled: true
+            storageClass: {{ .Values.redis.storageClass }}
+            size: 2Gi
+          resources:
+            limits:
+              memory: {{ .Values.redis.memoryLimit }}
+            requests:
+              memory: {{ .Values.redis.memoryLimit }}
+
+  - name: queue-crd
+    namespace: {{ .Values.namespace }}
+    chart: charts/queue-crd
+    needs:
+      - {{ .Values.namespace }}/kafka-cluster
+      - {{ .Values.namespace }}/kmsvc-redis
+    values:
+      - namespace: {{ .Values.namespace }}
+        kafkaBrokers: "kmsvc-kafka-bootstrap.{{ .Values.namespace }}.svc.cluster.local:9092"
+        redisAddr: "kmsvc-redis-master.{{ .Values.namespace }}.svc.cluster.local:6379"
+
+  - name: management-service
+    namespace: {{ .Values.namespace }}
+    chart: charts/management-service
+    needs:
+      - {{ .Values.namespace }}/kafka-cluster
+      - {{ .Values.namespace }}/kmsvc-redis
+    values:
+      - namespace: {{ .Values.namespace }}
+        env:
+          kafkaBrokers: "kmsvc-kafka-bootstrap.{{ .Values.namespace }}.svc.cluster.local:9092"
+          redisAddr: "kmsvc-redis-master.{{ .Values.namespace }}.svc.cluster.local:6379"
+          authentikIssuerURL: {{ .Values.managementService.authentikIssuerURL | quote }}
+          authentikAudience: {{ .Values.managementService.authentikAudience | quote }}
+        ingress:
+          enabled: true
+          host: {{ .Values.managementService.ingress.host | quote }}
+          clusterIssuer: {{ .Values.managementService.ingress.clusterIssuer | quote }}

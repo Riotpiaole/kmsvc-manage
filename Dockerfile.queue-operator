@@ -1,0 +1,12 @@
+FROM golang:1.26 AS build
+WORKDIR /src
+ENV GOPRIVATE=forgejo.riotpiao.homelab.com
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -o /out/queue-operator ./cmd/queue-operator
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/queue-operator /queue-operator
+USER nonroot:nonroot
+ENTRYPOINT ["/queue-operator"]

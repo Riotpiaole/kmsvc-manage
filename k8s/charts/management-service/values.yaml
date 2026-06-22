@@ -36,3 +36,9 @@ ingress:
   clusterIssuer: homelab-ca
   host: kmsvc.homelab.internal
   tlsSecretName: kmsvc-tls
+  # kmsvc-cli connects via gRPC directly to --server/KMSVC_SERVER (default
+  # kmsvc.homelab.internal:443, see kmsvc-cli's README), so raw gRPC needs an
+  # external path too — scoped to the gRPC service's own path prefix on the
+  # same host/port, rather than opening the whole host to gRPC passthrough.
+  grpcEnabled: true
+  grpcPathPrefix: /kafkamgmt.v1.QueueService/
