@@ -23,5 +23,7 @@ spec:
               value: {{ .Values.kafkaBrokers | quote }}
             - name: KMSVC_REDIS_ADDR
               value: {{ .Values.redisAddr | quote }}
+            - name: GOMEMLIMIT
+              value: {{ .Values.goMemLimit | quote }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

@@ -22,6 +22,9 @@ spec:
               containerPort: {{ .Values.grpcPort }}
             - name: http
               containerPort: {{ .Values.httpPort }}
+          env:
+            - name: GOMEMLIMIT
+              value: {{ .Values.goMemLimit | quote }}
           envFrom:
             - configMapRef:
                 name: management-service-config
