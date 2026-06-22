@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -78,4 +79,20 @@ func DeleteQueueMeta(ctx context.Context, rdb *redis.Client, queue string) error
 		return fmt.Errorf("delete queue meta %s: %w", queue, err)
 	}
 	return nil
+}
+
+// ListQueueNames scans for every queue with a published `kmsvc:queue:` row,
+// used by the message-plane server to discover which queues need a reaper
+// goroutine (design.md §5) since queue lifecycle isn't exposed over gRPC.
+func ListQueueNames(ctx context.Context, rdb *redis.Client) ([]string, error) {
+	const prefix = "kmsvc:queue:"
+	var names []string
+	iter := rdb.Scan(ctx, 0, prefix+"*", 0).Iterator()
+	for iter.Next(ctx) {
+		names = append(names, strings.TrimPrefix(iter.Val(), prefix))
+	}
+	if err := iter.Err(); err != nil {
+		return nil, fmt.Errorf("list queue names: %w", err)
+	}
+	return names, nil
 }

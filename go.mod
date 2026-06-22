@@ -3,6 +3,7 @@ module github.com/rockliang/kafka-management-service
 go 1.26.0
 
 require (
+	forgejo.riotpiao.homelab.com/rock/kmsvc-proto v1.1.0
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
@@ -11,7 +12,6 @@ require (
 	github.com/twmb/franz-go v1.21.3
 	github.com/twmb/franz-go/pkg/kadm v1.18.0
 	github.com/twmb/franz-go/pkg/kfake v0.0.0-20260615024848-f17c00130060
-	google.golang.org/genproto/googleapis/api v0.0.0-20260618152121-87f3d3e198d3
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	k8s.io/apimachinery v0.36.2
@@ -72,6 +72,7 @@ require (
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260618152121-87f3d3e198d3 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260610212136-7ab31c22f7ad // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
