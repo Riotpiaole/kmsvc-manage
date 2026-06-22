@@ -1,0 +1,262 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: queues.kmsvc.io
+spec:
+  group: kmsvc.io
+  names:
+    kind: Queue
+    listKind: QueueList
+    plural: queues
+    shortNames:
+    - queue
+    - queues
+    singular: queue
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.fifoQueue
+      name: FIFO
+      type: boolean
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: Queue is the Schema for the queues API — see design.md §2a.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: QueueSpec defines the desired state of a Queue (design.md
+              §2a).
+            properties:
+              deadLetterTargetQueue:
+                description: |-
+                  DeadLetterTargetQueue is the name of another Queue to route exhausted
+                  messages to. Must not point at itself or at another DLQ (design.md §5).
+                type: string
+              delaySeconds:
+                description: DelaySeconds is the default delivery delay applied to
+                  sent messages.
+                format: int32
+                maximum: 900
+                minimum: 0
+                type: integer
+              fifoQueue:
+                default: false
+                description: FIFOQueue enables per-MessageGroupId ordering and deduplication
+                  semantics.
+                type: boolean
+              isDLQ:
+                description: |-
+                  IsDLQ marks this queue as itself a dead-letter queue, used to enforce
+                  the no-DLQ-chaining validation rule in design.md §5.
+                type: boolean
+              maxReceiveCount:
+                default: 5
+                description: |-
+                  MaxReceiveCount is how many times a message may be redelivered before
+                  being routed to DeadLetterTargetQueue.
+                format: int32
+                minimum: 1
+                type: integer
+              maxShards:
+                default: 8
+                description: MaxShards is the ceiling on shard count the operator
+                  may split up to (design.md §2c).
+                format: int32
+                minimum: 1
+                type: integer
+              messageRetentionPeriodSeconds:
+                default: 345600
+                description: MessageRetentionPeriodSeconds maps to the underlying
+                  Kafka topic's retention.ms.
+                format: int32
+                maximum: 1209600
+                minimum: 60
+                type: integer
+              minShards:
+                default: 1
+                description: MinShards is the floor on shard count; the operator never
+                  merges below this.
+                format: int32
+                minimum: 1
+                type: integer
+              partitionsPerShard:
+                default: 6
+                description: PartitionsPerShard is the Kafka partition count on each
+                  shard's topic.
+                format: int32
+                minimum: 1
+                type: integer
+              shardSplitCooldownSeconds:
+                default: 300
+                description: |-
+                  ShardSplitCooldownSeconds is the minimum age a shard must reach before it
+                  is eligible to be split again, preventing rapid re-splitting of a child
+                  that hasn't yet absorbed its share of traffic.
+                format: int32
+                minimum: 0
+                type: integer
+              shardSplitThresholdBytesPerSec:
+                default: 5242880
+                description: |-
+                  ShardSplitThresholdBytesPerSec is the sustained per-shard throughput that
+                  triggers a split into two child shards (design.md §2c).
+                format: int64
+                minimum: 1
+                type: integer
+              visibilityTimeoutSeconds:
+                default: 30
+                description: |-
+                  VisibilityTimeoutSeconds is how long a received-but-unacked message stays
+                  invisible to other consumers before being redelivered.
+                format: int32
+                maximum: 43200
+                minimum: 0
+                type: integer
+            type: object
+          status:
+            description: QueueStatus defines the observed state of a Queue.
+            properties:
+              conditions:
+                description: Conditions hold detailed status information.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              phase:
+                description: Phase is the current reconciliation phase.
+                enum:
+                - Pending
+                - Ready
+                - Failed
+                type: string
+              shards:
+                description: |-
+                  Shards lists every shard backing this queue, active or draining
+                  (design.md §2a/§2c).
+                items:
+                  description: ShardStatus describes one shard backing a Queue (design.md
+                    §2a/§2c).
+                  properties:
+                    createdAt:
+                      description: |-
+                        CreatedAt timestamps when this shard was created, used to enforce
+                        ShardSplitCooldownSeconds.
+                      format: date-time
+                      type: string
+                    hashRangeEnd:
+                      format: int32
+                      type: integer
+                    hashRangeStart:
+                      description: |-
+                        HashRangeStart/HashRangeEnd define the [start, end) murmur2 hash range
+                        this shard owns over the 32-bit key space.
+                      format: int32
+                      type: integer
+                    id:
+                      description: ID is the shard's identifier, used in its topic
+                        name (kmsvc.{queue}.shard-{id}).
+                      type: string
+                    parentId:
+                      description: |-
+                        ParentID is the shard ID this shard was split from, empty for the
+                        original shard-0.
+                      type: string
+                    phase:
+                      description: Phase is this shard's lifecycle state.
+                      enum:
+                      - Active
+                      - Closing
+                      - Closed
+                      type: string
+                    topic:
+                      description: Topic is the underlying Kafka topic name for this
+                        shard.
+                      type: string
+                  required:
+                  - hashRangeEnd
+                  - hashRangeStart
+                  - id
+                  - phase
+                  - topic
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

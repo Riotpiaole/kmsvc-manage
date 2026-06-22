@@ -1,0 +1,15 @@
+environments:
+  homelab:
+    values:
+      - environments/homelab.yaml
+
+helmDefaults:
+  wait: true
+  timeout: 600
+
+helmfiles:
+  - path: releases.d/00-strimzi-operator.yaml.gotmpl
+  - path: releases.d/01-kafka-cluster.yaml.gotmpl
+  - path: releases.d/02-redis.yaml.gotmpl
+  - path: releases.d/03-queue-crd.yaml.gotmpl
+  - path: releases.d/04-management-service.yaml.gotmpl

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: queue-crd
+description: Queue CRD definition + queue-operator Deployment/RBAC (design.md §2a)
+type: application
+version: 0.1.0

@@ -1,0 +1,30 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: {{ .Values.clusterName }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 4.0.0
+    metadataVersion: 4.0-IV3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      default.replication.factor: {{ .Values.kafka.replicationFactor }}
+      min.insync.replicas: {{ .Values.kafka.minInsyncReplicas }}
+      offsets.topic.replication.factor: {{ .Values.kafka.replicationFactor }}
+      transaction.state.log.replication.factor: {{ .Values.kafka.replicationFactor }}
+      transaction.state.log.min.isr: {{ .Values.kafka.minInsyncReplicas }}
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}

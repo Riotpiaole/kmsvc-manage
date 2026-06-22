@@ -1,0 +1,39 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: {{ .Values.clusterName }}-pool
+  namespace: {{ .Values.namespace }}
+  labels:
+    strimzi.io/cluster: {{ .Values.clusterName }}
+spec:
+  replicas: {{ .Values.nodePool.replicas }}
+  roles:
+    - controller
+    - broker
+  storage:
+    type: persistent-claim
+    size: {{ .Values.nodePool.storage.sizeGi }}Gi
+    class: {{ .Values.nodePool.storage.class }}
+    deleteClaim: false
+  resources:
+    limits:
+      memory: {{ .Values.nodePool.resources.memory }}
+      cpu: {{ .Values.nodePool.resources.cpu | quote }}
+    requests:
+      memory: {{ .Values.nodePool.resources.memory }}
+      cpu: {{ .Values.nodePool.resources.cpu | quote }}
+  template:
+    pod:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: {{ .Values.nodePool.antiAffinityTopologyKey }}
+                labelSelector:
+                  matchLabels:
+                    strimzi.io/cluster: {{ .Values.clusterName }}
+    kafkaContainer:
+      env:
+        - name: KAFKA_HEAP_OPTS
+          value: {{ .Values.nodePool.heapOpts | quote }}

@@ -1,0 +1,16 @@
+environments:
+  homelab:
+    values:
+      - ../environments/homelab.yaml
+---
+repositories:
+  - name: strimzi
+    url: https://strimzi.io/charts/
+
+releases:
+  - name: strimzi-operator
+    namespace: {{ .Values.namespace }}
+    chart: strimzi/strimzi-kafka-operator
+    version: 0.46.0
+    values:
+      - watchNamespaces: ["{{ .Values.namespace }}"]

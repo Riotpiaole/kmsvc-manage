@@ -1,0 +1,21 @@
+clusterName: kmsvc
+namespace: sqs
+
+nodePool:
+  replicas: 3
+  storage:
+    class: longhorn
+    sizeGi: 50
+  resources:
+    memory: 5Gi
+    cpu: "2"
+  heapOpts: "-Xms2g -Xmx2g"
+  # design.md §7: 2 of 3 pods land on talos-cp-1 today; a 3rd physical node
+  # is planned later. Anti-affinity keeps the scheduler spreading pods as
+  # evenly as the current node count allows, and will auto-rebalance once
+  # the new node joins — no replica/quorum change needed at that point.
+  antiAffinityTopologyKey: kubernetes.io/hostname
+
+kafka:
+  replicationFactor: 3
+  minInsyncReplicas: 2

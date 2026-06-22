@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: queue-operator
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: queue-operator
+rules:
+  - apiGroups: ["kmsvc.io"]
+    resources: ["queues"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["kmsvc.io"]
+    resources: ["queues/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["kmsvc.io"]
+    resources: ["queues/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: queue-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: queue-operator
+subjects:
+  - kind: ServiceAccount
+    name: queue-operator
+    namespace: {{ .Values.namespace }}

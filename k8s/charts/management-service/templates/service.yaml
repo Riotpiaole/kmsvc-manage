@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: management-service
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: management-service
+  ports:
+    - name: grpc
+      port: {{ .Values.grpcPort }}
+      targetPort: {{ .Values.grpcPort }}
+    - name: http
+      port: {{ .Values.httpPort }}
+      targetPort: {{ .Values.httpPort }}
+  type: ClusterIP

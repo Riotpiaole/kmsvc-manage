@@ -1,0 +1,21 @@
+environments:
+  homelab:
+    values:
+      - ../environments/homelab.yaml
+---
+releases:
+  - name: kafka-cluster
+    namespace: {{ .Values.namespace }}
+    chart: ../charts/kafka-cluster
+    needs:
+      - {{ .Values.namespace }}/strimzi-operator
+    values:
+      - namespace: {{ .Values.namespace }}
+        nodePool:
+          replicas: {{ .Values.kafkaCluster.nodePool.replicas }}
+          storage:
+            class: {{ .Values.kafkaCluster.nodePool.storage.class }}
+            sizeGi: {{ .Values.kafkaCluster.nodePool.storage.sizeGi }}
+          resources:
+            memory: {{ .Values.kafkaCluster.nodePool.resources.memory }}
+            cpu: {{ .Values.kafkaCluster.nodePool.resources.cpu | quote }}

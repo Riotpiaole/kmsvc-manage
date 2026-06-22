@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: management-service-config
+  namespace: {{ .Values.namespace }}
+data:
+  KMSVC_KAFKA_BROKERS: {{ .Values.env.kafkaBrokers | quote }}
+  KMSVC_REDIS_ADDR: {{ .Values.env.redisAddr | quote }}
+  KMSVC_AUTHENTIK_ISSUER_URL: {{ .Values.env.authentikIssuerURL | quote }}
+  KMSVC_AUTHENTIK_AUDIENCE: {{ .Values.env.authentikAudience | quote }}
+  KMSVC_GRPC_LISTEN_ADDR: ":{{ .Values.grpcPort }}"
+  KMSVC_HTTP_LISTEN_ADDR: ":{{ .Values.httpPort }}"

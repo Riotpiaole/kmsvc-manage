@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: management-service
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: management-service
+  template:
+    metadata:
+      labels:
+        app: management-service
+    spec:
+      containers:
+        - name: management-service
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.grpcPort }}
+            - name: http
+              containerPort: {{ .Values.httpPort }}
+          envFrom:
+            - configMapRef:
+                name: management-service-config
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.httpPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.httpPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 20

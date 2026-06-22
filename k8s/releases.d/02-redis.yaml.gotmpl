@@ -1,0 +1,28 @@
+environments:
+  homelab:
+    values:
+      - ../environments/homelab.yaml
+---
+repositories:
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+
+releases:
+  - name: kmsvc-redis
+    namespace: {{ .Values.namespace }}
+    chart: bitnami/redis
+    version: 20.6.0
+    values:
+      - architecture: standalone
+        auth:
+          enabled: false
+        master:
+          persistence:
+            enabled: true
+            storageClass: {{ .Values.redis.storageClass }}
+            size: 2Gi
+          resources:
+            limits:
+              memory: {{ .Values.redis.memoryLimit }}
+            requests:
+              memory: {{ .Values.redis.memoryLimit }}

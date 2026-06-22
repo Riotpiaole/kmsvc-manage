@@ -1,0 +1,25 @@
+# design.md §7b: cluster-specific values for the homelab environment.
+# No secrets here — Authentik client secret etc. flow through the existing
+# Vault/talos-cli pattern, referenced at deploy time, not inlined.
+namespace: sqs
+
+kafkaCluster:
+  nodePool:
+    replicas: 3
+    storage:
+      class: longhorn
+      sizeGi: 50
+    resources:
+      memory: 5Gi
+      cpu: "2"
+
+redis:
+  storageClass: longhorn
+  memoryLimit: 1Gi
+
+managementService:
+  ingress:
+    host: kmsvc.homelab.internal
+    clusterIssuer: homelab-ca
+  authentikIssuerURL: ""   # cluster/KMSVC_AUTHENTIK_ISSUER_URL — fill in once task 0 is done
+  authentikAudience: ""    # cluster/KMSVC_AUTHENTIK_AUDIENCE

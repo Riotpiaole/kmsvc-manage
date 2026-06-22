@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue-operator
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: queue-operator
+  template:
+    metadata:
+      labels:
+        app: queue-operator
+    spec:
+      serviceAccountName: queue-operator
+      containers:
+        - name: queue-operator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: KMSVC_KAFKA_BROKERS
+              value: {{ .Values.kafkaBrokers | quote }}
+            - name: KMSVC_REDIS_ADDR
+              value: {{ .Values.redisAddr | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

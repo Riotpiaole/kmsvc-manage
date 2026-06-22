@@ -1,0 +1,32 @@
+apiVersion: kmsvc.io/v1
+kind: Queue
+metadata:
+  name: orders-fifo
+  namespace: sqs
+spec:
+  fifoQueue: true
+  visibilityTimeoutSeconds: 30
+  messageRetentionPeriodSeconds: 345600
+  maxReceiveCount: 5
+  deadLetterTargetQueue: orders-fifo-dlq
+  delaySeconds: 0
+  partitionsPerShard: 6
+  minShards: 1
+  maxShards: 8
+  shardSplitThresholdBytesPerSec: 5242880
+  shardSplitCooldownSeconds: 300
+---
+apiVersion: kmsvc.io/v1
+kind: Queue
+metadata:
+  name: orders-fifo-dlq
+  namespace: sqs
+spec:
+  fifoQueue: true
+  isDLQ: true
+  visibilityTimeoutSeconds: 30
+  messageRetentionPeriodSeconds: 1209600
+  maxReceiveCount: 5
+  partitionsPerShard: 6
+  minShards: 1
+  maxShards: 1
