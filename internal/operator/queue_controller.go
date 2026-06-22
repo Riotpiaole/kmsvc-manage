@@ -57,14 +57,14 @@ func (r *QueueReconciler) now() time.Time {
 }
 
 // Reconcile implements the controller-runtime reconcile loop.
-func (r *QueueReconciler) Reconcile(ctx context.Context, name string) error {
+func (r *QueueReconciler) Reconcile(ctx context.Context, namespace, name string) error {
 	var queue kmsvcv1.Queue
-	err := r.Client.Get(ctx, client.ObjectKey{Name: name}, &queue)
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &queue)
 	if apierrors.IsNotFound(err) {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("get queue %s: %w", name, err)
+		return fmt.Errorf("get queue %s/%s: %w", namespace, name, err)
 	}
 
 	if !queue.DeletionTimestamp.IsZero() {
@@ -113,8 +113,8 @@ func (r *QueueReconciler) newShard(id, parentID string, start, end uint32, queue
 	return kmsvcv1.ShardStatus{
 		ID:             id,
 		Topic:          kafka.ShardTopicName(queue.Name, queue.Spec.FIFOQueue, id),
-		HashRangeStart: start,
-		HashRangeEnd:   end,
+		HashRangeStart: int64(start),
+		HashRangeEnd:   int64(end),
 		Phase:          kmsvcv1.ShardPhaseActive,
 		ParentID:       parentID,
 		CreatedAt:      metav1.NewTime(r.now()),
@@ -168,8 +168,8 @@ func (r *QueueReconciler) publishRedisState(ctx context.Context, queue *kmsvcv1.
 		shards = append(shards, kafka.Shard{
 			ID:             s.ID,
 			Topic:          s.Topic,
-			HashRangeStart: s.HashRangeStart,
-			HashRangeEnd:   s.HashRangeEnd,
+			HashRangeStart: uint32(s.HashRangeStart),
+			HashRangeEnd:   uint32(s.HashRangeEnd),
 			Phase:          string(s.Phase),
 		})
 	}

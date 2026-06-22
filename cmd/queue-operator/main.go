@@ -72,7 +72,7 @@ func main() {
 	err = ctrl.NewControllerManagedBy(mgr).
 		For(&kmsvcv1.Queue{}).
 		Complete(reconcile.Func(func(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-			if err := reconciler.Reconcile(ctx, req.Name); err != nil {
+			if err := reconciler.Reconcile(ctx, req.Namespace, req.Name); err != nil {
 				return reconcile.Result{}, err
 			}
 			return reconcile.Result{}, nil

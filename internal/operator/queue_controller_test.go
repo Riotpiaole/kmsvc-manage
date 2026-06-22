@@ -76,7 +76,7 @@ func TestReconcileCreatesShardZeroAndPublishesRedisState(t *testing.T) {
 	r, admin := newTestReconciler(t, queue)
 	ctx := context.Background()
 
-	if err := r.Reconcile(ctx, "orders"); err != nil {
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
 
@@ -118,7 +118,7 @@ func TestReconcileRejectsDLQSelfReference(t *testing.T) {
 	r, _ := newTestReconciler(t, queue)
 	ctx := context.Background()
 
-	err := r.Reconcile(ctx, "orders")
+	err := r.Reconcile(ctx, "", "orders")
 	if err == nil {
 		t.Fatal("expected reconcile to fail for self-referencing DLQ")
 	}
@@ -137,7 +137,7 @@ func TestReconcileDeleteCleansUpTopicsAndRedis(t *testing.T) {
 	r, admin := newTestReconciler(t, queue)
 	ctx := context.Background()
 
-	if err := r.Reconcile(ctx, "orders"); err != nil {
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
 		t.Fatalf("initial reconcile: %v", err)
 	}
 
@@ -150,7 +150,7 @@ func TestReconcileDeleteCleansUpTopicsAndRedis(t *testing.T) {
 	if err := r.Client.Delete(ctx, &got); err != nil {
 		t.Fatalf("delete queue: %v", err)
 	}
-	if err := r.Reconcile(ctx, "orders"); err != nil {
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
 		t.Fatalf("delete reconcile: %v", err)
 	}
 
@@ -174,7 +174,7 @@ func TestReconcileSplitsShardOverThreshold(t *testing.T) {
 	r.Now = func() time.Time { return now }
 	ctx := context.Background()
 
-	if err := r.Reconcile(ctx, "orders"); err != nil {
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
 		t.Fatalf("initial reconcile: %v", err)
 	}
 	var got kmsvcv1.Queue
@@ -185,7 +185,7 @@ func TestReconcileSplitsShardOverThreshold(t *testing.T) {
 	admin.setOffsetSum(shard0Topic, 0)
 
 	// First sample establishes the baseline (no delta to compare yet).
-	if err := r.Reconcile(ctx, "orders"); err != nil {
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
 		t.Fatalf("baseline reconcile: %v", err)
 	}
 
@@ -194,7 +194,7 @@ func TestReconcileSplitsShardOverThreshold(t *testing.T) {
 	now = now.Add(time.Second)
 	admin.setOffsetSum(shard0Topic, 10)
 
-	if err := r.Reconcile(ctx, "orders"); err != nil {
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
 		t.Fatalf("split-triggering reconcile: %v", err)
 	}
 
@@ -220,13 +220,13 @@ func TestReconcileSplitsShardOverThreshold(t *testing.T) {
 	if len(children) != 2 {
 		t.Fatalf("children = %+v, want 2", children)
 	}
-	mid := kafka.SplitHashRange(parent.HashRangeStart, parent.HashRangeEnd)
+	mid := kafka.SplitHashRange(uint32(parent.HashRangeStart), uint32(parent.HashRangeEnd))
 	gotRanges := map[[2]uint32]bool{}
 	for _, c := range children {
 		if c.Phase != kmsvcv1.ShardPhaseActive {
 			t.Errorf("child %s phase = %v, want Active", c.ID, c.Phase)
 		}
-		gotRanges[[2]uint32{c.HashRangeStart, c.HashRangeEnd}] = true
+		gotRanges[[2]uint32{uint32(c.HashRangeStart), uint32(c.HashRangeEnd)}] = true
 	}
 	if !gotRanges[[2]uint32{0, mid}] || !gotRanges[[2]uint32{mid, kafka.FullHashRangeEnd}] {
 		t.Errorf("child ranges = %+v, want [0,%d) and [%d,%d)", children, mid, mid, kafka.FullHashRangeEnd)
@@ -241,7 +241,7 @@ func TestReconcileDrainsClosingShardWhenLagZero(t *testing.T) {
 	r.Now = func() time.Time { return now }
 	ctx := context.Background()
 
-	if err := r.Reconcile(ctx, "orders"); err != nil {
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
 		t.Fatalf("initial reconcile: %v", err)
 	}
 	var got kmsvcv1.Queue
@@ -259,7 +259,7 @@ func TestReconcileDrainsClosingShardWhenLagZero(t *testing.T) {
 	topic := got.Status.Shards[0].Topic
 	admin.setLag(kafka.ConsumerGroup("orders"), topic, 0)
 
-	if err := r.Reconcile(ctx, "orders"); err != nil {
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
 		t.Fatalf("drain reconcile: %v", err)
 	}
 

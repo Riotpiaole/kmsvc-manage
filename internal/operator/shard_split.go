@@ -68,13 +68,13 @@ func (r *QueueReconciler) reconcileSplits(ctx context.Context, queue *kmsvcv1.Qu
 			continue
 		}
 
-		mid := kafka.SplitHashRange(s.HashRangeStart, s.HashRangeEnd)
+		mid := kafka.SplitHashRange(uint32(s.HashRangeStart), uint32(s.HashRangeEnd))
 		childAID := nextShardID(queue.Status.Shards)
-		childA := r.newShard(childAID, s.ID, s.HashRangeStart, mid, queue)
+		childA := r.newShard(childAID, s.ID, uint32(s.HashRangeStart), mid, queue)
 		childA.CreatedAt = metav1.NewTime(now)
 		childAIDNum, _ := strconv.Atoi(childAID)
 		childBID := strconv.Itoa(childAIDNum + 1)
-		childB := r.newShard(childBID, s.ID, mid, s.HashRangeEnd, queue)
+		childB := r.newShard(childBID, s.ID, mid, uint32(s.HashRangeEnd), queue)
 		childB.CreatedAt = metav1.NewTime(now)
 
 		s.Phase = kmsvcv1.ShardPhaseClosing

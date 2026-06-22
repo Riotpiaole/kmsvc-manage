@@ -102,9 +102,12 @@ type ShardStatus struct {
 	Topic string `json:"topic"`
 
 	// HashRangeStart/HashRangeEnd define the [start, end) murmur2 hash range
-	// this shard owns over the 32-bit key space.
-	HashRangeStart uint32 `json:"hashRangeStart"`
-	HashRangeEnd   uint32 `json:"hashRangeEnd"`
+	// this shard owns over the 32-bit key space. Stored as int64 (not uint32)
+	// because controller-gen maps Go uint32 to OpenAPI format:int32, whose max
+	// (2147483647) is smaller than FullHashRangeEnd (0xFFFFFFFF) and the
+	// apiserver rejects the status update.
+	HashRangeStart int64 `json:"hashRangeStart"`
+	HashRangeEnd   int64 `json:"hashRangeEnd"`
 
 	// Phase is this shard's lifecycle state.
 	// +kubebuilder:validation:Enum=Active;Closing;Closed

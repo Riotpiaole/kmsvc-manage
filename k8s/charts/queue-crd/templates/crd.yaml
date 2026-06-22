@@ -218,13 +218,16 @@ spec:
                       format: date-time
                       type: string
                     hashRangeEnd:
-                      format: int32
+                      format: int64
                       type: integer
                     hashRangeStart:
                       description: |-
                         HashRangeStart/HashRangeEnd define the [start, end) murmur2 hash range
-                        this shard owns over the 32-bit key space.
-                      format: int32
+                        this shard owns over the 32-bit key space. Stored as int64 (not uint32)
+                        because controller-gen maps Go uint32 to OpenAPI format:int32, whose max
+                        (2147483647) is smaller than FullHashRangeEnd (0xFFFFFFFF) and the
+                        apiserver rejects the status update.
+                      format: int64
                       type: integer
                     id:
                       description: ID is the shard's identifier, used in its topic
