@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka-cluster
+  namespace: cicd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: kmsvc
+  source:
+    repoURL: https://forgejo.riotpiao.homelab.com/rock/kafaka-management-service.git
+    targetRevision: main
+    path: k8s/charts/kafka-cluster
+    helm:
+      values: |
+        namespace: sqs
+        nodePool:
+          replicas: 3
+          storage:
+            class: longhorn
+            sizeGi: 50
+          resources:
+            memory: 5Gi
+            cpu: "2"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sqs
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

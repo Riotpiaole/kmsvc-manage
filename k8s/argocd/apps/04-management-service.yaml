@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: management-service
+  namespace: cicd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: kmsvc
+  source:
+    repoURL: https://forgejo.riotpiao.homelab.com/rock/kafaka-management-service.git
+    targetRevision: main
+    path: k8s/charts/management-service
+    helm:
+      values: |
+        namespace: sqs
+        image:
+          repository: forgejo.riotpiao.homelab.com/rock/kafka-management-service
+          # CI (.forgejo/workflows/release.yaml) writes the released git tag
+          # here and pushes the commit -- ArgoCD picks it up on its next sync.
+          tag: latest
+        env:
+          kafkaBrokers: "kmsvc-kafka-bootstrap.sqs.svc.cluster.local:9092"
+          redisAddr: "kmsvc-redis-master.sqs.svc.cluster.local:6379"
+          authentikIssuerURL: "https://authentik.riotpiao.homelab.com/application/o/kafaka/"
+          authentikAudience: "QI0gPtR99ar8VvhK8Tqox4SDkTKzbNU7lbgwBNSc"
+        ingress:
+          enabled: true
+          host: kmsvc.homelab.internal
+          clusterIssuer: homelab-ca
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sqs
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

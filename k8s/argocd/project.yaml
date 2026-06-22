@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: kmsvc
+  namespace: cicd
+spec:
+  description: Kafka Management Service (design.md) -- Strimzi/Kafka, Redis, queue-operator, message-plane server
+  sourceRepos:
+    - https://forgejo.riotpiao.homelab.com/rock/kafaka-management-service.git
+    - https://strimzi.io/charts/
+    - https://charts.bitnami.com/bitnami
+  destinations:
+    - namespace: sqs
+      server: https://kubernetes.default.svc
+    - namespace: cicd
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: "apiextensions.k8s.io"
+      kind: CustomResourceDefinition
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRole
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRoleBinding

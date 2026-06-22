@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kmsvc-redis
+  namespace: cicd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: kmsvc
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: redis
+    targetRevision: 20.6.0
+    helm:
+      values: |
+        architecture: standalone
+        # docker.io/bitnami stopped publishing version-pinned tags; bitnamilegacy
+        # mirrors them for free. allowInsecureImages silences the chart's
+        # container-image allowlist check, which doesn't know about that mirror.
+        global:
+          security:
+            allowInsecureImages: true
+        image:
+          repository: bitnamilegacy/redis
+        auth:
+          enabled: false
+        master:
+          persistence:
+            enabled: true
+            storageClass: longhorn
+            size: 2Gi
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 1Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sqs
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

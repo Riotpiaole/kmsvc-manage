@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: strimzi-operator
+  namespace: cicd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: kmsvc
+  source:
+    repoURL: https://strimzi.io/charts/
+    chart: strimzi-kafka-operator
+    targetRevision: 0.46.0
+    helm:
+      values: |
+        watchNamespaces: ["sqs"]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sqs
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
