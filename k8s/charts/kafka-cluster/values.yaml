@@ -4,8 +4,12 @@ namespace: sqs
 nodePool:
   replicas: 3
   storage:
-    class: longhorn
-    sizeGi: 50
+    class: longhorn-kafka
+    # Longhorn's per-node scheduling budget on the current 2-node cluster has
+    # only ~36Gi of headroom left (other PVCs already reserve the rest), and
+    # each node hosts one replica of all 3 broker volumes -- so 3 * sizeGi
+    # must fit in that headroom. Revisit once the 3rd node joins.
+    sizeGi: 10
   resources:
     memory: 5Gi
     cpu: "2"

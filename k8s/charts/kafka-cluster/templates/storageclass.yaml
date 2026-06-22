@@ -1,0 +1,22 @@
+{{- if eq .Values.nodePool.storage.class "longhorn-kafka" }}
+# The default "longhorn" StorageClass requests 3 replicas, but the homelab
+# cluster currently has only 2 schedulable nodes -- Longhorn places at most
+# one replica per node, so the 3rd replica can never be scheduled and the
+# volume runs permanently "degraded". This class pins replica count to the
+# actual node count. Bump back to "longhorn" (or numberOfReplicas: "3" here)
+# once the 3rd node joins.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-kafka
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "2"
+  staleReplicaTimeout: "30"
+  fromBackup: ""
+  fsType: "ext4"
+  dataLocality: "disabled"
+{{- end }}

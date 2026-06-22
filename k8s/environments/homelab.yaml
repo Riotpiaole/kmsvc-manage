@@ -7,8 +7,15 @@ kafkaCluster:
   nodePool:
     replicas: 3
     storage:
-      class: longhorn
-      sizeGi: 50
+      # longhorn-kafka pins numberOfReplicas to 2 to match the current
+      # 2-node cluster (see kafka-cluster chart's storageclass.yaml).
+      # Switch back to "longhorn" (3 replicas) once the 3rd node joins.
+      class: longhorn-kafka
+      # Longhorn's per-node scheduling budget on the current 2-node cluster
+      # only has ~36Gi of headroom (other PVCs reserve the rest), and each
+      # node hosts one replica of all 3 broker volumes, so 3 * sizeGi must
+      # fit in that headroom. Revisit once the 3rd node joins.
+      sizeGi: 10
     resources:
       memory: 5Gi
       cpu: "2"
@@ -21,5 +28,5 @@ managementService:
   ingress:
     host: kmsvc.homelab.internal
     clusterIssuer: homelab-ca
-  authentikIssuerURL: ""   # cluster/KMSVC_AUTHENTIK_ISSUER_URL — fill in once task 0 is done
-  authentikAudience: ""    # cluster/KMSVC_AUTHENTIK_AUDIENCE
+  authentikIssuerURL: "https://authentik.riotpiao.homelab.com/application/o/kafaka/"
+  authentikAudience: "QI0gPtR99ar8VvhK8Tqox4SDkTKzbNU7lbgwBNSc"
