@@ -40,10 +40,10 @@ ingress:
   enabled: true
   className: nginx
   clusterIssuer: homelab-ca
-  host: kmsvc.homelab.internal
+  host: kmsvc.riotpiao.homelab.com
   tlsSecretName: kmsvc-tls
   # kmsvc-cli connects via gRPC directly to --server/KMSVC_SERVER (default
-  # kmsvc.homelab.internal:443, see kmsvc-cli's README), so raw gRPC needs an
+  # kmsvc.riotpiao.homelab.com:443, see kmsvc-cli's README), so raw gRPC needs an
   # external path too — scoped to the gRPC service's own path prefix on the
   # same host/port, rather than opening the whole host to gRPC passthrough.
   grpcEnabled: true

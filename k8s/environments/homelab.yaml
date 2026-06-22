@@ -26,7 +26,7 @@ redis:
 
 managementService:
   ingress:
-    host: kmsvc.homelab.internal
+    host: kmsvc.riotpiao.homelab.com
     clusterIssuer: homelab-ca
   authentikIssuerURL: "https://authentik.riotpiao.homelab.com/application/o/kafaka/"
   authentikAudience: "QI0gPtR99ar8VvhK8Tqox4SDkTKzbNU7lbgwBNSc"
