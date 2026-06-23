@@ -8,6 +8,12 @@ image:
 kafkaBrokers: "kmsvc-kafka-bootstrap.sqs.svc.cluster.local:9092"
 redisAddr: "kmsvc-redis-master.sqs.svc.cluster.local:6379"
 
+# Must match kafka-cluster chart's clusterName/derived pool name -- used to
+# resolve "<kafkaClusterName>-<kafkaPoolName>-<brokerID>" broker pod names
+# for AZ-aware Queue status (design.md §2a).
+kafkaClusterName: kmsvc
+kafkaPoolName: kmsvc-pool
+
 resources:
   requests:
     cpu: 100m

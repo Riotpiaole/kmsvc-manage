@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	kmsvcv1 "github.com/rockliang/kafka-management-service/apis/kmsvc/v1"
 	"github.com/rockliang/kafka-management-service/internal/kafka"
@@ -38,6 +39,11 @@ type QueueReconciler struct {
 	Admin  TopicAdmin
 	Redis  *goredis.Client
 	Now    func() time.Time
+
+	// Zones resolves shard topics' broker placement to availability zones
+	// (design.md §2a AZ-awareness). Nil disables zone annotation entirely --
+	// tests and any deployment without zone-labeled nodes can leave it unset.
+	Zones *ZoneLocator
 
 	// sampleState tracks the last (offsetSum, time) seen per shard topic, used
 	// to compute a throughput estimate between reconciles. Keyed by topic name.
@@ -90,6 +96,8 @@ func (r *QueueReconciler) Reconcile(ctx context.Context, namespace, name string)
 		return r.setFailed(ctx, &queue, "EnsureTopics", err)
 	}
 
+	r.annotateAvailabilityZones(ctx, &queue)
+
 	if err := r.reconcileSplits(ctx, &queue); err != nil {
 		return r.setFailed(ctx, &queue, "ShardSplit", err)
 	}
@@ -137,6 +145,43 @@ func (r *QueueReconciler) ensureShardTopics(ctx context.Context, queue *kmsvcv1.
 		}
 	}
 	return nil
+}
+
+// annotateAvailabilityZones resolves and stamps each non-closed shard's
+// AvailabilityZones (design.md §2a). Best-effort: a resolution failure for
+// one shard is logged via setFailed-style swallowing -- it must never block
+// the rest of reconciliation, since AZ info is status metadata, not
+// load-bearing for the queue's actual operation.
+func (r *QueueReconciler) annotateAvailabilityZones(ctx context.Context, queue *kmsvcv1.Queue) {
+	if r.Zones == nil {
+		return
+	}
+	logger := ctrllog.FromContext(ctx)
+	for i := range queue.Status.Shards {
+		s := &queue.Status.Shards[i]
+		if s.Phase == kmsvcv1.ShardPhaseClosed {
+			continue
+		}
+		brokerIDs, err := r.Admin.ReplicaBrokerIDs(ctx, s.Topic)
+		if err != nil {
+			logger.Error(err, "resolve replica broker IDs", "topic", s.Topic)
+			continue
+		}
+		if len(brokerIDs) == 0 {
+			logger.Info("no replica broker IDs returned", "topic", s.Topic)
+			continue
+		}
+		zones, err := r.Zones.ZonesForBrokers(ctx, brokerIDs)
+		if err != nil {
+			logger.Error(err, "resolve zones for brokers", "topic", s.Topic, "brokerIDs", brokerIDs)
+			continue
+		}
+		if len(zones) == 0 {
+			logger.Info("no zones resolved", "topic", s.Topic, "brokerIDs", brokerIDs)
+			continue
+		}
+		s.AvailabilityZones = zones
+	}
 }
 
 func (r *QueueReconciler) setFailed(ctx context.Context, queue *kmsvcv1.Queue, reason string, cause error) error {

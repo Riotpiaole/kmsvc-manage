@@ -121,6 +121,13 @@ type ShardStatus struct {
 	// CreatedAt timestamps when this shard was created, used to enforce
 	// ShardSplitCooldownSeconds.
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+
+	// AvailabilityZones lists the topology.kubernetes.io/zone values of every
+	// node currently hosting a Kafka replica of this shard's topic, resolved
+	// from the broker pods' node placement each reconcile. Empty until the
+	// first successful resolution (e.g. node lookup failed transiently).
+	// +optional
+	AvailabilityZones []string `json:"availabilityZones,omitempty"`
 }
 
 // QueueStatus defines the observed state of a Queue.

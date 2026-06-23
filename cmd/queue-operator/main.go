@@ -67,6 +67,16 @@ func main() {
 		Admin:  admin,
 		Redis:  rdb,
 		Now:    time.Now,
+		Zones: &operator.ZoneLocator{
+			// GetAPIReader(), not GetClient(): the latter is cache-backed and
+			// would make controller-runtime List+Watch all Pods/Nodes
+			// cluster-wide just to serve occasional point Gets here. A direct
+			// (uncached) reader needs only "get" RBAC, not "list"/"watch".
+			Client:      mgr.GetAPIReader(),
+			Namespace:   getEnv("KMSVC_NAMESPACE", "sqs"),
+			ClusterName: getEnv("KMSVC_KAFKA_CLUSTER_NAME", "kmsvc"),
+			PoolName:    getEnv("KMSVC_KAFKA_POOL_NAME", "kmsvc-pool"),
+		},
 	}
 
 	err = ctrl.NewControllerManagedBy(mgr).

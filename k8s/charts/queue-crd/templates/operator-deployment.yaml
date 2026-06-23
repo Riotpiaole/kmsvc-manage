@@ -25,5 +25,13 @@ spec:
               value: {{ .Values.redisAddr | quote }}
             - name: GOMEMLIMIT
               value: {{ .Values.goMemLimit | quote }}
+            - name: KMSVC_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KMSVC_KAFKA_CLUSTER_NAME
+              value: {{ .Values.kafkaClusterName | quote }}
+            - name: KMSVC_KAFKA_POOL_NAME
+              value: {{ .Values.kafkaPoolName | quote }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

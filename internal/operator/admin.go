@@ -13,4 +13,5 @@ type TopicAdmin interface {
 	DeleteTopic(ctx context.Context, topic string) error
 	LogEndOffsetSum(ctx context.Context, topic string) (int64, error)
 	ConsumerLag(ctx context.Context, group, topic string) (int64, error)
+	ReplicaBrokerIDs(ctx context.Context, topic string) ([]int32, error)
 }

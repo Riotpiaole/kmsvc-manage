@@ -51,6 +51,15 @@ func (f *fakeAdmin) ConsumerLag(_ context.Context, group, topic string) (int64, 
 	return f.lag[group+"/"+topic], nil
 }
 
+func (f *fakeAdmin) ReplicaBrokerIDs(_ context.Context, topic string) ([]int32, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.topics[topic]; !ok {
+		return nil, nil
+	}
+	return []int32{0}, nil
+}
+
 func (f *fakeAdmin) setOffsetSum(topic string, v int64) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

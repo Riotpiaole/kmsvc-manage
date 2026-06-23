@@ -81,6 +81,33 @@ func (a *Admin) DescribeTopic(ctx context.Context, topic string) (partitions int
 	return int32(len(detail.Partitions)), true, nil
 }
 
+// ReplicaBrokerIDs returns the set of broker IDs holding any replica of any
+// partition of topic, used by the queue-operator to resolve which
+// availability zones (node labels) a shard's data actually lives on
+// (design.md §2a AZ-awareness).
+func (a *Admin) ReplicaBrokerIDs(ctx context.Context, topic string) ([]int32, error) {
+	td, err := a.client.ListTopics(ctx, topic)
+	if err != nil {
+		return nil, fmt.Errorf("list topics %q: %w", topic, err)
+	}
+	detail, found := td[topic]
+	if !found || detail.Err != nil {
+		return nil, nil
+	}
+
+	seen := make(map[int32]bool)
+	var ids []int32
+	for _, p := range detail.Partitions {
+		for _, id := range p.Replicas {
+			if !seen[id] {
+				seen[id] = true
+				ids = append(ids, id)
+			}
+		}
+	}
+	return ids, nil
+}
+
 // LogEndOffsetSum returns the sum of the high-watermark offsets across every
 // partition of a topic — a monotonically increasing proxy for total records
 // produced, used by the queue-operator's shard-split sampler (design.md §2c)

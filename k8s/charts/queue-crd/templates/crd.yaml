@@ -211,6 +211,15 @@ spec:
                   description: ShardStatus describes one shard backing a Queue (design.md
                     §2a/§2c).
                   properties:
+                    availabilityZones:
+                      description: |-
+                        AvailabilityZones lists the topology.kubernetes.io/zone values of every
+                        node currently hosting a Kafka replica of this shard's topic, resolved
+                        from the broker pods' node placement each reconcile. Empty until the
+                        first successful resolution (e.g. node lookup failed transiently).
+                      items:
+                        type: string
+                      type: array
                     createdAt:
                       description: |-
                         CreatedAt timestamps when this shard was created, used to enforce
