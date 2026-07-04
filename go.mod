@@ -3,7 +3,7 @@ module github.com/rockliang/kafka-management-service
 go 1.26.0
 
 require (
-	forgejo.riotpiao.homelab.com/rock/kmsvc-proto v1.1.0
+	forgejo.riotpiao.homelab.com/homelab/kmsvc-proto v1.1.0
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
@@ -14,6 +14,7 @@ require (
 	github.com/twmb/franz-go/pkg/kfake v0.0.0-20260615024848-f17c00130060
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
+	k8s.io/api v0.36.2
 	k8s.io/apimachinery v0.36.2
 	k8s.io/client-go v0.36.2
 	sigs.k8s.io/controller-runtime v0.24.1
@@ -77,7 +78,6 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.36.2 // indirect
 	k8s.io/apiextensions-apiserver v0.36.0 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
