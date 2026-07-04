@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: docker
+    container:
+      image: golang:1.25
+    env:
+      GOPRIVATE: forgejo.riotpiao.homelab.com
+      GOFLAGS: -mod=readonly
+    steps:
+      - name: install node (required by JS-based actions)
+        run: apt-get update && apt-get install -y --no-install-recommends nodejs ca-certificates git
+
+      - uses: actions/checkout@v4
+
+      - name: configure git auth for private module fetch
+        run: |
+          git config --global url."https://oauth2:${FORGEJO_PAT}@forgejo.riotpiao.homelab.com".insteadOf "https://forgejo.riotpiao.homelab.com"
+        env:
+          FORGEJO_PAT: ${{ secrets.FORGEJO_PAT }}
+
+      - name: cache go modules + build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-
+
+      - name: gofmt
+        run: |
+          fmt_out="$(gofmt -l .)"
+          if [ -n "$fmt_out" ]; then
+            echo "$fmt_out"
+            echo "::error::gofmt found unformatted files, run 'gofmt -w .'"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./cmd/server ./cmd/queue-operator
+
+      - name: go test
+        run: go test ./... -race -coverprofile=coverage.out
+
+      - name: coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+
+      - name: upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
