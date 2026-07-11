@@ -13,6 +13,7 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -45,6 +46,9 @@ func main() {
 	}
 	if err := kmsvcv1.AddToScheme(scheme); err != nil {
 		exitf("registering kmsvc scheme: %v", err)
+	}
+	if err := appsv1.AddToScheme(scheme); err != nil {
+		exitf("registering apps scheme: %v", err)
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{Scheme: scheme})
@@ -88,7 +92,23 @@ func main() {
 			return reconcile.Result{}, nil
 		}))
 	if err != nil {
-		exitf("setting up controller: %v", err)
+		exitf("setting up queue controller: %v", err)
+	}
+
+	temporalWorkerReconciler := &operator.TemporalWorkerReconciler{
+		Client: mgr.GetClient(),
+	}
+	err = ctrl.NewControllerManagedBy(mgr).
+		For(&kmsvcv1.TemporalWorker{}).
+		Owns(&appsv1.Deployment{}).
+		Complete(reconcile.Func(func(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+			if err := temporalWorkerReconciler.Reconcile(ctx, req.Namespace, req.Name); err != nil {
+				return reconcile.Result{}, fmt.Errorf("reconcile TemporalWorker %s/%s: %w", req.Namespace, req.Name, err)
+			}
+			return reconcile.Result{}, nil
+		}))
+	if err != nil {
+		exitf("setting up temporal worker controller: %v", err)
 	}
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
