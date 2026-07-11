@@ -2,6 +2,7 @@ package operator
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,6 +39,16 @@ func newTestRedis(t *testing.T) *goredis.Client {
 	}
 	t.Cleanup(mr.Close)
 	return goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+}
+
+func newTestSchemeWithAppsV1(t *testing.T) *runtime.Scheme {
+	t.Helper()
+	scheme := newTestScheme(t)
+	appsv1 := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(appsv1); err != nil {
+		t.Fatalf("add client-go scheme: %v", err)
+	}
+	return scheme
 }
 
 func newTestReconciler(t *testing.T, objs ...client.Object) (*QueueReconciler, *fakeAdmin) {
@@ -271,5 +282,131 @@ func TestReconcileDrainsClosingShardWhenLagZero(t *testing.T) {
 	}
 	if admin.hasTopic(topic) {
 		t.Errorf("expected drained topic %q to be deleted", topic)
+	}
+}
+
+func TestReconcileTemporalWorkerCreatesWhenLabelPresent(t *testing.T) {
+	queue := baseQueue("orders")
+	queue.Labels = map[string]string{"temporal.io/namespace": "default"}
+	r, _ := newTestReconciler(t, queue)
+	ctx := context.Background()
+
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+
+	var worker kmsvcv1.TemporalWorker
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: "worker-default", Namespace: "temporal"}, &worker); err != nil {
+		t.Fatalf("expected TemporalWorker to be created: %v", err)
+	}
+	if worker.Spec.Namespace != "default" {
+		t.Errorf("worker namespace = %q, want default", worker.Spec.Namespace)
+	}
+}
+
+func TestReconcileTemporalWorkerValidatesNamespaceLabel(t *testing.T) {
+	queue := baseQueue("orders")
+	queue.Labels = map[string]string{"temporal.io/namespace": "Foo@Bar"}
+	r, _ := newTestReconciler(t, queue)
+	ctx := context.Background()
+
+	err := r.Reconcile(ctx, "", "orders")
+	if err == nil {
+		t.Fatal("expected Reconcile to fail with invalid namespace label")
+	}
+	if err.Error() == "" || err.Error() == "invalid temporal namespace" {
+		t.Errorf("error message not descriptive: %v", err)
+	}
+}
+
+func TestReconcileTemporalWorkerValidatesKubernetesName(t *testing.T) {
+	queue := baseQueue("orders")
+	queue.Labels = map[string]string{"temporal.io/namespace": strings.Repeat("a", 250)}
+	r, _ := newTestReconciler(t, queue)
+	ctx := context.Background()
+
+	err := r.Reconcile(ctx, "", "orders")
+	if err == nil {
+		t.Fatal("expected Reconcile to fail with too-long kubernetes name")
+	}
+}
+
+func TestReconcileDeleteRemovesTemporalWorker(t *testing.T) {
+	queue := baseQueue("orders")
+	queue.Labels = map[string]string{"temporal.io/namespace": "default"}
+	r, _ := newTestReconciler(t, queue)
+	ctx := context.Background()
+
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
+		t.Fatalf("initial reconcile: %v", err)
+	}
+
+	var got kmsvcv1.Queue
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: "orders"}, &got); err != nil {
+		t.Fatalf("get queue: %v", err)
+	}
+
+	if err := r.Client.Delete(ctx, &got); err != nil {
+		t.Fatalf("delete queue: %v", err)
+	}
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
+		t.Fatalf("delete reconcile: %v", err)
+	}
+
+	var worker kmsvcv1.TemporalWorker
+	err := r.Client.Get(ctx, client.ObjectKey{Name: "worker-default", Namespace: "temporal"}, &worker)
+	if err == nil {
+		t.Error("expected TemporalWorker to be deleted")
+	}
+}
+
+func TestIsValidTemporalNamespace(t *testing.T) {
+	tests := []struct {
+		name string
+		ns   string
+		want bool
+	}{
+		{"valid lowercase", "default", true},
+		{"valid with underscore", "my_namespace", true},
+		{"valid with hyphen", "my-namespace", true},
+		{"valid with digits", "ns123", true},
+		{"invalid uppercase", "MyNamespace", false},
+		{"invalid special chars", "my@namespace", false},
+		{"empty", "", false},
+		{"too long", strings.Repeat("a", 256), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isValidTemporalNamespace(tt.ns); got != tt.want {
+				t.Errorf("isValidTemporalNamespace(%q) = %v, want %v", tt.ns, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateKubernetesName(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		wantOk bool
+	}{
+		{"valid", "worker-default", true},
+		{"valid lowercase digits", "worker-123", true},
+		{"invalid uppercase", "Worker-default", false},
+		{"invalid starts with hyphen", "-worker-default", false},
+		{"invalid ends with hyphen", "worker-default-", false},
+		{"invalid special char", "worker@default", false},
+		{"too long", "worker-" + strings.Repeat("a", 250), false},
+		{"starts with digit", "1worker-default", false},
+		{"empty", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateKubernetesName(tt.input)
+			got := err == nil
+			if got != tt.wantOk {
+				t.Errorf("validateKubernetesName(%q) error = %v, want ok=%v", tt.input, err, tt.wantOk)
+			}
+		})
 	}
 }
