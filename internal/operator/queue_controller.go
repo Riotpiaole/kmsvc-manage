@@ -7,6 +7,7 @@ package operator
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -108,6 +109,10 @@ func (r *QueueReconciler) Reconcile(ctx context.Context, namespace, name string)
 
 	if err := r.publishRedisState(ctx, &queue); err != nil {
 		return r.setFailed(ctx, &queue, "PublishRedis", err)
+	}
+
+	if err := r.reconcileTemporalWorker(ctx, &queue); err != nil {
+		return r.setFailed(ctx, &queue, "TemporalWorker", err)
 	}
 
 	queue.Status.Phase = kmsvcv1.QueuePhaseReady
@@ -221,6 +226,56 @@ func (r *QueueReconciler) publishRedisState(ctx context.Context, queue *kmsvcv1.
 	return kmsvcredis.PutShardMap(ctx, r.Redis, queue.Name, shards)
 }
 
+// reconcileTemporalWorker creates or updates a TemporalWorker CRD if the Queue
+// has the temporal.io/namespace label. One TemporalWorker per Temporal namespace
+// handles all task queues in that namespace (Kafka broker model).
+func (r *QueueReconciler) reconcileTemporalWorker(ctx context.Context, queue *kmsvcv1.Queue) error {
+	if queue.Labels == nil {
+		return nil
+	}
+
+	namespace := queue.Labels["temporal.io/namespace"]
+	if namespace == "" {
+		return nil
+	}
+
+	if !isValidTemporalNamespace(namespace) {
+		return fmt.Errorf("invalid temporal namespace label %q: must be lowercase alphanumeric and hyphens", namespace)
+	}
+
+	workerName := "worker-" + namespace
+	if err := validateKubernetesName(workerName); err != nil {
+		return fmt.Errorf("invalid kubernetes name %q: %w", workerName, err)
+	}
+
+	replicas := int32(1)
+	workerNamespace := getEnvOrDefault("KMSVC_TEMPORAL_NAMESPACE", "temporal")
+	workerImage := getEnvOrDefault("KMSVC_TEMPORAL_WORKER_IMAGE", "story-crater-backend:latest")
+
+	worker := &kmsvcv1.TemporalWorker{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      workerName,
+			Namespace: workerNamespace,
+		},
+		Spec: kmsvcv1.TemporalWorkerSpec{
+			Namespace: namespace,
+			Image:     workerImage,
+			Replicas:  &replicas,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(queue, worker, r.Client.Scheme()); err != nil {
+		return fmt.Errorf("set controller reference: %w", err)
+	}
+
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, worker, func() error {
+		return nil
+	}); err != nil {
+		return fmt.Errorf("create or update TemporalWorker %s: %w", workerName, err)
+	}
+	return nil
+}
+
 func (r *QueueReconciler) reconcileDelete(ctx context.Context, queue *kmsvcv1.Queue) error {
 	if !controllerutil.ContainsFinalizer(queue, finalizerName) {
 		return nil
@@ -239,6 +294,24 @@ func (r *QueueReconciler) reconcileDelete(ctx context.Context, queue *kmsvcv1.Qu
 	if err := kmsvcredis.DeleteShardMap(ctx, r.Redis, queue.Name); err != nil {
 		return err
 	}
+
+	if queue.Labels != nil {
+		namespace := queue.Labels["temporal.io/namespace"]
+		if namespace != "" {
+			workerName := "worker-" + namespace
+			workerNamespace := getEnvOrDefault("KMSVC_TEMPORAL_NAMESPACE", "temporal")
+			worker := &kmsvcv1.TemporalWorker{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      workerName,
+					Namespace: workerNamespace,
+				},
+			}
+			if err := r.Client.Delete(ctx, worker); err != nil && !apierrors.IsNotFound(err) {
+				return fmt.Errorf("delete TemporalWorker %s: %w", workerName, err)
+			}
+		}
+	}
+
 	controllerutil.RemoveFinalizer(queue, finalizerName)
 	if err := r.Client.Update(ctx, queue); err != nil {
 		return fmt.Errorf("remove finalizer %s: %w", queue.Name, err)
@@ -254,4 +327,45 @@ func nextShardID(shards []kmsvcv1.ShardStatus) string {
 		}
 	}
 	return strconv.Itoa(max + 1)
+}
+
+func isValidTemporalNamespace(namespace string) bool {
+	if len(namespace) == 0 || len(namespace) > 255 {
+		return false
+	}
+	for _, ch := range namespace {
+		if !((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+func validateKubernetesName(name string) error {
+	if len(name) == 0 || len(name) > 253 {
+		return fmt.Errorf("name length must be 1-253 characters")
+	}
+	for i, ch := range name {
+		isLower := ch >= 'a' && ch <= 'z'
+		isDigit := ch >= '0' && ch <= '9'
+		isHyphen := ch == '-'
+		isValid := isLower || isDigit || isHyphen
+		if !isValid {
+			return fmt.Errorf("name contains invalid character %q at position %d", ch, i)
+		}
+		if i == 0 && (isHyphen || isDigit) {
+			return fmt.Errorf("name must start with lowercase letter")
+		}
+		if i == len(name)-1 && isHyphen {
+			return fmt.Errorf("name must end with lowercase letter or digit")
+		}
+	}
+	return nil
+}
+
+func getEnvOrDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
