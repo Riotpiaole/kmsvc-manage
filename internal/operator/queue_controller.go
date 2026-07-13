@@ -257,18 +257,15 @@ func (r *QueueReconciler) reconcileTemporalWorker(ctx context.Context, queue *km
 			Name:      workerName,
 			Namespace: workerNamespace,
 		},
-		Spec: kmsvcv1.TemporalWorkerSpec{
-			Namespace: namespace,
-			Image:     workerImage,
-			Replicas:  &replicas,
-		},
 	}
 
-	if err := controllerutil.SetControllerReference(queue, worker, r.Client.Scheme()); err != nil {
-		return fmt.Errorf("set controller reference: %w", err)
-	}
-
+	// Queue and TemporalWorker live in different namespaces (sqs vs. the Temporal
+	// namespace), so a controller owner reference is disallowed by the API server.
+	// Lifecycle is instead managed explicitly in reconcileDelete.
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, worker, func() error {
+		worker.Spec.Namespace = namespace
+		worker.Spec.Image = workerImage
+		worker.Spec.Replicas = &replicas
 		return nil
 	}); err != nil {
 		return fmt.Errorf("create or update TemporalWorker %s: %w", workerName, err)
