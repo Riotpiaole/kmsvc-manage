@@ -22,8 +22,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/rockliang/kafka-management-service/internal/api/handlers"
-	"github.com/rockliang/kafka-management-service/internal/api/interceptors"
-	"github.com/rockliang/kafka-management-service/internal/auth"
 	"github.com/rockliang/kafka-management-service/internal/config"
 	"github.com/rockliang/kafka-management-service/internal/core/queue"
 	"github.com/rockliang/kafka-management-service/internal/core/reaper"
@@ -66,11 +64,6 @@ func run() error {
 	}
 	defer producer.Close()
 
-	validator, err := auth.NewValidator(ctx, cfg.AuthentikIssuerURL, cfg.AuthentikAudience)
-	if err != nil {
-		return err
-	}
-
 	router := &queue.ShardRouter{Redis: rdb}
 
 	svc := &handlers.QueueService{
@@ -88,10 +81,7 @@ func run() error {
 	}
 	defer svc.Consumers.Close()
 
-	grpcSrv := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(interceptors.UnaryServerInterceptor(validator)),
-		grpc.ChainStreamInterceptor(interceptors.StreamServerInterceptor(validator)),
-	)
+	grpcSrv := grpc.NewServer()
 	kafkamgmtv1.RegisterQueueServiceServer(grpcSrv, svc)
 
 	mux := runtime.NewServeMux()
