@@ -50,13 +50,6 @@ func Load() (*Config, error) {
 		cfg.RedisDB = n
 	}
 
-	if cfg.AuthentikIssuerURL == "" {
-		return nil, fmt.Errorf("KMSVC_AUTHENTIK_ISSUER_URL is required")
-	}
-	if cfg.AuthentikAudience == "" {
-		return nil, fmt.Errorf("KMSVC_AUTHENTIK_AUDIENCE is required")
-	}
-
 	return cfg, nil
 }
 
