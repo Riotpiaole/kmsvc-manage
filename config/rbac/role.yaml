@@ -14,7 +14,7 @@ rules:
     verbs: ["update"]
   - apiGroups: ["kmsvc.io"]
     resources: ["temporalworkers"]
-    verbs: ["get", "list", "watch", "update", "patch"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["kmsvc.io"]
     resources: ["temporalworkers/status"]
     verbs: ["get", "update", "patch"]

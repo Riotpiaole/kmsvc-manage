@@ -36,10 +36,11 @@ const minInsyncReplicas = 2
 
 // QueueReconciler reconciles Queue objects (design.md §2a).
 type QueueReconciler struct {
-	Client client.Client
-	Admin  TopicAdmin
-	Redis  *goredis.Client
-	Now    func() time.Time
+	Client   client.Client
+	Admin    TopicAdmin
+	Redis    *goredis.Client
+	Now      func() time.Time
+	Temporal TemporalNamespaceRegisterer
 
 	// Zones resolves shard topics' broker placement to availability zones
 	// (design.md §2a AZ-awareness). Nil disables zone annotation entirely --
@@ -246,6 +247,10 @@ func (r *QueueReconciler) reconcileTemporalWorker(ctx context.Context, queue *km
 	workerName := "worker-" + namespace
 	if err := validateKubernetesName(workerName); err != nil {
 		return fmt.Errorf("invalid kubernetes name %q: %w", workerName, err)
+	}
+
+	if err := r.Temporal.RegisterNamespace(ctx, namespace); err != nil {
+		return fmt.Errorf("register temporal namespace %s: %w", namespace, err)
 	}
 
 	replicas := int32(1)

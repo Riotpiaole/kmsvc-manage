@@ -23,6 +23,7 @@ import (
 	kmsvcv1 "github.com/rockliang/kafka-management-service/apis/kmsvc/v1"
 	"github.com/rockliang/kafka-management-service/internal/kafka"
 	"github.com/rockliang/kafka-management-service/internal/operator"
+	kmsvctemporal "github.com/rockliang/kafka-management-service/internal/temporal"
 )
 
 func main() {
@@ -66,11 +67,17 @@ func main() {
 		exitf("connecting to redis at %s: %v", redisAddr, err)
 	}
 
+	temporalClient, err := kmsvctemporal.NewClient(getEnv("KMSVC_TEMPORAL_FRONTEND_ADDRESS", "temporal-frontend.temporal.svc.cluster.local:7233"))
+	if err != nil {
+		exitf("creating temporal client: %v", err)
+	}
+
 	reconciler := &operator.QueueReconciler{
-		Client: mgr.GetClient(),
-		Admin:  admin,
-		Redis:  rdb,
-		Now:    time.Now,
+		Client:   mgr.GetClient(),
+		Admin:    admin,
+		Redis:    rdb,
+		Now:      time.Now,
+		Temporal: temporalClient,
 		Zones: &operator.ZoneLocator{
 			// GetAPIReader(), not GetClient(): the latter is cache-backed and
 			// would make controller-runtime List+Watch all Pods/Nodes

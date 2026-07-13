@@ -2,6 +2,7 @@ package operator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -53,6 +54,12 @@ func newTestSchemeWithAppsV1(t *testing.T) *runtime.Scheme {
 
 func newTestReconciler(t *testing.T, objs ...client.Object) (*QueueReconciler, *fakeAdmin) {
 	t.Helper()
+	r, admin, _ := newTestReconcilerWithTemporal(t, objs...)
+	return r, admin
+}
+
+func newTestReconcilerWithTemporal(t *testing.T, objs ...client.Object) (*QueueReconciler, *fakeAdmin, *fakeTemporal) {
+	t.Helper()
 	scheme := newTestScheme(t)
 	cl := fake.NewClientBuilder().
 		WithScheme(scheme).
@@ -60,12 +67,14 @@ func newTestReconciler(t *testing.T, objs ...client.Object) (*QueueReconciler, *
 		WithObjects(objs...).
 		Build()
 	admin := newFakeAdmin()
+	temporal := newFakeTemporal()
 	return &QueueReconciler{
-		Client: cl,
-		Admin:  admin,
-		Redis:  newTestRedis(t),
-		Now:    time.Now,
-	}, admin
+		Client:   cl,
+		Admin:    admin,
+		Redis:    newTestRedis(t),
+		Now:      time.Now,
+		Temporal: temporal,
+	}, admin, temporal
 }
 
 func baseQueue(name string) *kmsvcv1.Queue {
@@ -288,7 +297,7 @@ func TestReconcileDrainsClosingShardWhenLagZero(t *testing.T) {
 func TestReconcileTemporalWorkerCreatesWhenLabelPresent(t *testing.T) {
 	queue := baseQueue("orders")
 	queue.Labels = map[string]string{"temporal.io/namespace": "default"}
-	r, _ := newTestReconciler(t, queue)
+	r, _, temporal := newTestReconcilerWithTemporal(t, queue)
 	ctx := context.Background()
 
 	if err := r.Reconcile(ctx, "", "orders"); err != nil {
@@ -301,6 +310,42 @@ func TestReconcileTemporalWorkerCreatesWhenLabelPresent(t *testing.T) {
 	}
 	if worker.Spec.Namespace != "default" {
 		t.Errorf("worker namespace = %q, want default", worker.Spec.Namespace)
+	}
+	if got := temporal.count("default"); got != 1 {
+		t.Errorf("RegisterNamespace(%q) called %d times, want 1", "default", got)
+	}
+}
+
+func TestReconcileTemporalWorkerRegistersNamespaceBeforeCreating(t *testing.T) {
+	queue := baseQueue("orders")
+	queue.Labels = map[string]string{"temporal.io/namespace": "checkout"}
+	r, _, temporal := newTestReconcilerWithTemporal(t, queue)
+	ctx := context.Background()
+
+	if err := r.Reconcile(ctx, "", "orders"); err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+	if got := temporal.count("checkout"); got != 1 {
+		t.Errorf("RegisterNamespace(%q) called %d times, want 1", "checkout", got)
+	}
+}
+
+func TestReconcileTemporalWorkerFailsWhenNamespaceRegistrationFails(t *testing.T) {
+	queue := baseQueue("orders")
+	queue.Labels = map[string]string{"temporal.io/namespace": "checkout"}
+	r, _, temporal := newTestReconcilerWithTemporal(t, queue)
+	temporal.setErr(fmt.Errorf("frontend unreachable"))
+	ctx := context.Background()
+
+	err := r.Reconcile(ctx, "", "orders")
+	if err == nil {
+		t.Fatal("expected Reconcile to fail when namespace registration fails")
+	}
+
+	var worker kmsvcv1.TemporalWorker
+	getErr := r.Client.Get(ctx, client.ObjectKey{Name: "worker-checkout", Namespace: "temporal"}, &worker)
+	if getErr == nil {
+		t.Error("expected no TemporalWorker to be created when namespace registration fails")
 	}
 }
 
