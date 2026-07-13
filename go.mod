@@ -3,7 +3,7 @@ module github.com/rockliang/kafka-management-service
 go 1.26.0
 
 require (
-	forgejo.riotpiao.homelab.com/homelab/kmsvc-proto v1.1.0
+	github.com/Riotpiaole/kmsvc-proto v1.3.0
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0

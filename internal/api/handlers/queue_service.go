@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	kafkamgmtv1 "forgejo.riotpiao.homelab.com/rock/kmsvc-proto/gen/kafkamgmt/v1"
+	kafkamgmtv1 "github.com/Riotpiaole/kmsvc-proto/gen/kafkamgmt/v1"
 	goredis "github.com/redis/go-redis/v9"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

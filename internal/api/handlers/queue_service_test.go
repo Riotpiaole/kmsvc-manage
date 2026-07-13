@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	kafkamgmtv1 "forgejo.riotpiao.homelab.com/rock/kmsvc-proto/gen/kafkamgmt/v1"
+	kafkamgmtv1 "github.com/Riotpiaole/kmsvc-proto/gen/kafkamgmt/v1"
 	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/twmb/franz-go/pkg/kfake"
