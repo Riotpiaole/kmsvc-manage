@@ -18,6 +18,15 @@ rules:
   - apiGroups: ["kmsvc.io"]
     resources: ["queues/finalizers"]
     verbs: ["update"]
+  - apiGroups: ["kmsvc.io"]
+    resources: ["temporalworkers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["kmsvc.io"]
+    resources: ["temporalworkers/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["kmsvc.io"]
+    resources: ["temporalworkers/finalizers"]
+    verbs: ["update"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
@@ -27,6 +36,9 @@ rules:
   - apiGroups: [""]
     resources: ["pods", "nodes"]
     verbs: ["get"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
