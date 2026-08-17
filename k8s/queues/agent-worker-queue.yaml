@@ -1,0 +1,14 @@
+apiVersion: kmsvc.io/v1
+kind: Queue
+metadata:
+  name: agent-worker-queue
+  namespace: sqs
+  labels:
+    temporal.io/namespace: production
+spec:
+  visibilityTimeoutSeconds: 30
+  messageRetentionPeriodSeconds: 345600
+  maxReceiveCount: 5
+  partitionsPerShard: 1
+  minShards: 1
+  maxShards: 1
